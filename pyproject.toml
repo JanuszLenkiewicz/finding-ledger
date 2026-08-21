@@ -39,7 +39,10 @@ Issues = "https://github.com/JanuszLenkiewicz/finding-ledger/issues"
 Changelog = "https://github.com/JanuszLenkiewicz/finding-ledger/blob/main/CHANGELOG.md"
 
 [project.optional-dependencies]
-dev = ["pytest>=7.0", "ruff>=0.4", "mypy>=1.10"]
+# types-PyYAML is not optional for the type check: pyyaml ships no inline types,
+# and `ignore_missing_imports` does not silence `import-untyped` for a library
+# whose stubs exist on PyPI — without it mypy fails on every module reading YAML.
+dev = ["pytest>=7.0", "ruff>=0.4", "mypy>=1.10", "types-PyYAML>=6.0"]
 mcp = ["mcp>=1.2"]
 # Only needed to PUSH scores; building the payloads (and --dry-run) is stdlib.
 langfuse = ["langfuse>=2.0"]
