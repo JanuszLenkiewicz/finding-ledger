@@ -1,0 +1,41 @@
+# The same gate for Python teams — no export file, no second command.
+#
+# Copy to .github/workflows/pytest-gate.yml in the consuming repository.
+#
+# `--fl-gate` is the whole point: a test bound to an `open` golden case may be
+# red without failing the build, so nobody ever has to delete or skip a failing
+# test to get CI green.
+name: pytest quality gate
+
+on: [push, pull_request]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - run: pip install -r requirements.txt finding-ledger
+
+      # DeepEval, plain pytest asserts, or both — the plugin does not care.
+      - name: Run the suite with the finding-lifecycle gate
+        run: |
+          pytest tests/eval \
+            --fl-cases eval/cases \
+            --fl-ledger bugfix/backlog.md \
+            --fl-gate \
+            --fl-record \
+            --fl-results results.json
+
+      - name: Report the lifecycle state in the job summary
+        if: always()
+        run: findingledger check --cases eval/cases --results results.json --github
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: findingledger-results
+          path: results.json

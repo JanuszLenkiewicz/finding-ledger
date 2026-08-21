@@ -1,0 +1,69 @@
+# Unattended nightly loop: audit → ledger → alert → report.
+#
+# Copy to .github/workflows/nightly-audit.yml in the consuming repository.
+#
+# This is the schedule layer — the thing that makes the method run without a
+# human. Two rules are enforced here rather than trusted to a prompt:
+#
+#   1. the alert step is a separate, deterministic step that reads the audit's
+#      frontmatter and fires unconditionally (a model that "knows" it should
+#      notify you will one day simply not do it);
+#   2. it only fires on CRITICAL — everything else waits in the ledger.
+name: Nightly audit
+
+on:
+  schedule:
+    - cron: '0 5 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write   # to commit the updated ledger
+  pages: write
+  id-token: write
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install finding-ledger
+
+      # Your own auditor writes audits/YYYY-MM-DD-audit.md with YAML
+      # frontmatter (date, n_findings, by_severity) and findings.json.
+      - name: Run the auditor
+        run: python tools/audit.py --out audits --findings findings.json
+
+      - name: Merge findings into the ledger
+        run: |
+          findingledger merge --ledger bugfix/backlog.md --findings findings.json \
+            | tee merge-report.json
+
+      - name: Alert on critical findings only
+        run: |
+          findingledger alert \
+            --audit "audits/$(date -u +%F)-audit.md" \
+            --name "${{ github.repository }}" \
+            --min-severity critical \
+            --channel webhook --webhook "${{ secrets.ALERT_WEBHOOK }}" \
+            --format markdown
+
+      - name: Build the dashboard
+        run: findingledger report --projects . --out public/index.html
+
+      - name: Commit the ledger
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add bugfix/backlog.md audits/
+          git diff --cached --quiet || git commit -m "audit: nightly findings ($(date -u +%F))"
+          git push
+
+      # The quality dashboard, served from GitHub Pages. No server, no database:
+      # the report is one self-contained HTML file.
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: public
+      - uses: actions/deploy-pages@v4

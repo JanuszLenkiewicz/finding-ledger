@@ -1,0 +1,120 @@
+<!doctype html><html><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'><title>finding-ledger report</title><style>
+:root { --bg:#fff; --fg:#1a1a1a; --muted:#667; --card:#f5f6f8; --line:#e2e4e9;
+        --crit:#c0392b; --major:#b9770e; --minor:#7d8a96; --ok:#1e8449; --accent:#2c5aa0; }
+@media (prefers-color-scheme: dark) {
+  :root { --bg:#14161a; --fg:#e8e9eb; --muted:#9aa; --card:#1e2127; --line:#2c3038;
+          --crit:#e74c3c; --major:#e6a23c; --minor:#8a97a3; --ok:#2ecc71; --accent:#6ea8fe; } }
+* { box-sizing:border-box } body { margin:0; font:15px/1.5 system-ui,sans-serif;
+  background:var(--bg); color:var(--fg); padding:1.5rem; max-width:1080px; margin:auto }
+h1 { font-size:1.4rem } h2 { font-size:1.1rem; margin-top:1.6rem }
+.tabs { display:flex; gap:.4rem; flex-wrap:wrap; margin:1rem 0 }
+.tabs button { padding:.45rem .9rem; border:1px solid var(--line); background:var(--card);
+  color:var(--fg); border-radius:8px; cursor:pointer; font-size:.95rem }
+.tabs button.active { background:var(--accent); color:#fff; border-color:var(--accent) }
+.cards { display:flex; gap:.8rem; flex-wrap:wrap; margin:.8rem 0 }
+.card { background:var(--card); border:1px solid var(--line); border-radius:10px;
+  padding:.7rem 1rem; min-width:130px } .card b { font-size:1.5rem; display:block }
+.card span { color:var(--muted); font-size:.82rem }
+table { border-collapse:collapse; width:100%; font-size:.9rem; margin:.5rem 0 }
+th,td { text-align:left; padding:.35rem .6rem; border-bottom:1px solid var(--line);
+  vertical-align:top } th { color:var(--muted); font-weight:600 }
+.overflow { overflow-x:auto }
+.sig { font-family:ui-monospace,monospace; font-size:.82rem }
+.badge { display:inline-block; padding:.05rem .5rem; border-radius:99px; font-size:.78rem;
+  color:#fff; white-space:nowrap }
+.b-crit{background:var(--crit)} .b-major{background:var(--major)} .b-minor{background:var(--minor)}
+.b-ok{background:var(--ok)} .b-other{background:var(--muted)}
+.bar { display:inline-block; height:.7rem; background:var(--crit); border-radius:2px;
+  vertical-align:middle } .muted { color:var(--muted) } .err { color:var(--crit) }
+.cases { display:flex; flex-wrap:wrap; gap:.45rem }
+.case { display:inline-flex; align-items:center; gap:.45rem; background:var(--card);
+  border:1px solid var(--line); border-radius:8px; padding:.22rem .6rem;
+  max-width:100%; } .case .sig { overflow-wrap:anywhere }
+footer { margin-top:2rem; color:var(--muted); font-size:.8rem }
+</style></head><body><div class='tabs'><button onclick='show(0)'>newsletter-pipeline</button><button onclick='show(1)'>trading-mentor</button></div><section class="proj" id="proj0">
+<h1>newsletter-pipeline</h1>
+<p class="muted">Unattended daily newsletter with an LLM mentor</p>
+<div class="cards">
+<div class='card'><b>3</b><span>open items</span></div>
+<div class='card'><b>1</b><span>critical (open)</span></div>
+<div class='card'><b>2</b><span>escalation candidates</span></div>
+<div class='card'><b>1</b><span>closed</span></div>
+<div class='card'><b>7</b><span>audits</span></div>
+<div class='card'><b>2026-08-08</b><span>last audit</span></div>
+</div>
+<h2>Escalation candidates (threshold reached — human decision)</h2>
+<div class="overflow"><table><tr><th>signature</th><th>count</th><th>status</th><th>title</th></tr>
+<tr><td class='sig'>LEN-01-length-drift</td><td>26×</td><td><span class="badge b-major">OPEN</span></td><td>issues drift far over the word limit</td></tr>
+<tr><td class='sig'>PWT-01-person-repeated</td><td>7×</td><td><span class="badge b-major">OPEN</span></td><td>anti-repetition rule broken systematically</td></tr>
+</table></div>
+<h2>Ledger</h2>
+<div class="overflow"><table><tr><th>signature</th><th>count</th><th>status</th><th>title</th></tr>
+<tr><td class='sig'>LEN-01-length-drift</td><td>26×</td><td><span class="badge b-major">OPEN</span></td><td>issues drift far over the word limit</td></tr>
+<tr><td class='sig'>PWT-01-person-repeated</td><td>7×</td><td><span class="badge b-major">OPEN</span></td><td>anti-repetition rule broken systematically</td></tr>
+<tr><td class='sig'>B1-detail-beyond-source</td><td>3×</td><td><span class="badge b-crit">🔴 CRITICAL</span></td><td>detail added under a real citation</td></tr>
+<tr><td class='sig'>ALT-01-alert-step-skipped</td><td>1×</td><td><span class="badge b-ok">FIXED</span></td><td>LLM auditor skipped its alert step</td></tr>
+</table></div>
+<h2>Golden cases</h2><p class='muted'>2 open · 1 regression · 1 sanity</p>
+<div class="cases">
+<span class='case'><span class='sig'>b1-source-fidelity</span><span class="badge b-major">open</span></span>
+<span class='case'><span class='sig'>len-01-limit</span><span class="badge b-major">open</span></span>
+<span class='case'><span class='sig'>fak-01-guardrail</span><span class="badge b-ok">regression</span></span>
+<span class='case'><span class='sig'>structure</span><span class="badge b-other">sanity</span></span>
+</div>
+<h2>Audits</h2>
+<p class='muted'>no trend yet — 7 audit(s), nothing to compare against</p>
+<div class="overflow"><table><tr><th>date</th><th>findings</th><th>crit/maj/min</th><th></th></tr>
+<tr><td>2026-08-02</td><td>6</td><td>2/3/1</td><td><span class='bar' style='width:120px'></span></td></tr>
+<tr><td>2026-08-03</td><td>5</td><td>1/3/1</td><td><span class='bar' style='width:100px'></span></td></tr>
+<tr><td>2026-08-04</td><td>5</td><td>2/2/1</td><td><span class='bar' style='width:100px'></span></td></tr>
+<tr><td>2026-08-05</td><td>4</td><td>1/2/1</td><td><span class='bar' style='width:80px'></span></td></tr>
+<tr><td>2026-08-06</td><td>3</td><td>1/1/1</td><td><span class='bar' style='width:60px'></span></td></tr>
+<tr><td>2026-08-07</td><td>3</td><td>0/2/1</td><td><span class='bar' style='width:60px'></span></td></tr>
+<tr><td>2026-08-08</td><td>2</td><td>0/1/1</td><td><span class='bar' style='width:40px'></span></td></tr>
+</table></div>
+</section>
+<section class="proj" id="proj1">
+<h1>trading-mentor</h1>
+<p class="muted">Trading-mentor platform with a two-layer AI mentor</p>
+<div class="cards">
+<div class='card'><b>3</b><span>open items</span></div>
+<div class='card'><b>1</b><span>critical (open)</span></div>
+<div class='card'><b>2</b><span>escalation candidates</span></div>
+<div class='card'><b>1</b><span>closed</span></div>
+<div class='card'><b>7</b><span>audits</span></div>
+<div class='card'><b>2026-08-08</b><span>last audit</span></div>
+</div>
+<h2>Escalation candidates (threshold reached — human decision)</h2>
+<div class="overflow"><table><tr><th>signature</th><th>count</th><th>status</th><th>title</th></tr>
+<tr><td class='sig'>LEN-01-length-drift</td><td>26×</td><td><span class="badge b-major">OPEN</span></td><td>issues drift far over the word limit</td></tr>
+<tr><td class='sig'>PWT-01-person-repeated</td><td>7×</td><td><span class="badge b-major">OPEN</span></td><td>anti-repetition rule broken systematically</td></tr>
+</table></div>
+<h2>Ledger</h2>
+<div class="overflow"><table><tr><th>signature</th><th>count</th><th>status</th><th>title</th></tr>
+<tr><td class='sig'>LEN-01-length-drift</td><td>26×</td><td><span class="badge b-major">OPEN</span></td><td>issues drift far over the word limit</td></tr>
+<tr><td class='sig'>PWT-01-person-repeated</td><td>7×</td><td><span class="badge b-major">OPEN</span></td><td>anti-repetition rule broken systematically</td></tr>
+<tr><td class='sig'>B1-detail-beyond-source</td><td>3×</td><td><span class="badge b-crit">🔴 CRITICAL</span></td><td>detail added under a real citation</td></tr>
+<tr><td class='sig'>ALT-01-alert-step-skipped</td><td>1×</td><td><span class="badge b-ok">FIXED</span></td><td>LLM auditor skipped its alert step</td></tr>
+</table></div>
+<h2>Golden cases</h2><p class='muted'>2 open · 1 regression · 1 sanity</p>
+<div class="cases">
+<span class='case'><span class='sig'>b1-source-fidelity</span><span class="badge b-major">open</span></span>
+<span class='case'><span class='sig'>len-01-limit</span><span class="badge b-major">open</span></span>
+<span class='case'><span class='sig'>fak-01-guardrail</span><span class="badge b-ok">regression</span></span>
+<span class='case'><span class='sig'>structure</span><span class="badge b-other">sanity</span></span>
+</div>
+<h2>Audits</h2>
+<p class='muted'>no trend yet — 7 audit(s), nothing to compare against</p>
+<div class="overflow"><table><tr><th>date</th><th>findings</th><th>crit/maj/min</th><th></th></tr>
+<tr><td>2026-08-02</td><td>6</td><td>2/3/1</td><td><span class='bar' style='width:120px'></span></td></tr>
+<tr><td>2026-08-03</td><td>5</td><td>1/3/1</td><td><span class='bar' style='width:100px'></span></td></tr>
+<tr><td>2026-08-04</td><td>5</td><td>2/2/1</td><td><span class='bar' style='width:100px'></span></td></tr>
+<tr><td>2026-08-05</td><td>4</td><td>1/2/1</td><td><span class='bar' style='width:80px'></span></td></tr>
+<tr><td>2026-08-06</td><td>3</td><td>1/1/1</td><td><span class='bar' style='width:60px'></span></td></tr>
+<tr><td>2026-08-07</td><td>3</td><td>0/2/1</td><td><span class='bar' style='width:60px'></span></td></tr>
+<tr><td>2026-08-08</td><td>2</td><td>0/1/1</td><td><span class='bar' style='width:40px'></span></td></tr>
+</table></div>
+</section><footer>finding-ledger report · demo data — synthetic</footer><script>
+function show(i){document.querySelectorAll('.proj').forEach((p,j)=>p.style.display=i===j?'':'none');
+document.querySelectorAll('.tabs button').forEach((b,j)=>b.classList.toggle('active',i===j));}
+show(0)</script></body></html>

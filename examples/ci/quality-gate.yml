@@ -1,0 +1,66 @@
+# Pull-request quality gate: promptfoo runs the assertions, finding-ledger
+# decides what a red test *means*.
+#
+# Copy to .github/workflows/quality-gate.yml in the consuming repository.
+#
+# The point of this file: a prompt change and the golden case that guards it
+# land in the same pull request, and the reviewer sees the verdict inline.
+name: LLM quality gate
+
+on:
+  pull_request:
+    paths:
+      - 'prompts/**'
+      - 'eval/**'
+      - 'bugfix/**'
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  gate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run the assertion suite
+        run: npx promptfoo@latest eval -c eval/promptfooconfig.yaml -o promptfoo-output.json
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        # promptfoo exits non-zero on any failure — including the `open` cases
+        # that are *supposed* to fail. The gate below is what decides.
+        continue-on-error: true
+
+      - name: Finding-ledger gate
+        id: gate
+        uses: JanuszLenkiewicz/finding-ledger@main
+        with:
+          results: promptfoo-output.json
+          cases: eval/cases
+          # Pin in real use, e.g. package: finding-ledger==0.2.0
+          report: findingledger-report.html
+
+      - name: Publish the report as an artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: findingledger-report
+          path: findingledger-report.html
+
+      - name: Comment the verdict on the pull request
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ALARMS: ${{ steps.gate.outputs.alarms }}
+          READY: ${{ steps.gate.outputs.graduation_candidates }}
+        run: |
+          {
+            echo "<!-- finding-ledger -->"
+            echo "**finding-ledger:** $ALARMS alarm(s), $READY case(s) ready to graduate."
+            echo ""
+            echo "A failing \`open\` case is expected — it was written before the fix."
+            echo "A failing \`regression\` case is not: the defect came back."
+          } > comment.md
+          gh pr comment "${{ github.event.number }}" --body-file comment.md --edit-last || \
+            gh pr comment "${{ github.event.number }}" --body-file comment.md

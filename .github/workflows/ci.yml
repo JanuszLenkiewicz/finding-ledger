@@ -1,0 +1,46 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.9", "3.11", "3.13"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - run: pip install -e ".[dev]"
+      - run: python -m pytest -q
+      - run: python -m ruff check src tests examples conftest.py
+      - run: python -m mypy src/findingledger
+
+      # The examples are documentation that has to keep running: each one is a
+      # self-contained tour over synthetic data (no keys, no network).
+      - name: Examples still run
+        run: |
+          python examples/quickstart.py > /dev/null
+          python examples/integrations_tour.py > /dev/null
+          python examples/demo_report.py > /dev/null
+
+  mcp:
+    # The MCP extra needs Python >= 3.10; the core library still supports 3.9.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -e ".[dev,mcp]"
+      - run: python -m pytest -q tests/test_mcp_server.py
+      # Type-check again with `mcp` actually installed: the server's
+      # try/except import binds a real class here, not the fallback, so this
+      # run covers what the `test` job (which has no mcp extra) cannot see.
+      - run: python -m mypy src/findingledger

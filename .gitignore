@@ -1,0 +1,15 @@
+.venv/
+__pycache__/
+*.egg-info/
+.pytest_cache/
+dist/
+nagrania/
+.ruff_cache/
+.mypy_cache/
+.DS_Store
+
+# Local state written by the CLI when it is run inside this repo (e.g. the
+# Ragas baseline), and the maintainer's working journal — neither belongs to
+# the published project.
+.findingledger/
+MEMORY.md

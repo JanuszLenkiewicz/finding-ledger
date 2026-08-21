@@ -1,0 +1,150 @@
+# Composite GitHub Action: the tri-state quality gate as one workflow step.
+#
+#   - uses: JanuszLenkiewicz/finding-ledger@main
+#     with:
+#       results: promptfoo-output.json
+#       cases: eval/cases
+#
+# A failing `open` case does NOT fail the build (the test was written before the
+# fix, on purpose); a failing `regression` or `sanity` case does. Annotations
+# land on the diff, a table lands in the job summary, and the counts are step
+# outputs other jobs can branch on.
+name: finding-ledger quality gate
+description: >-
+  Confront golden cases with a test runner's results (promptfoo, DeepEval,
+  JUnit, Ragas), fail only on real regressions, and record findings in a
+  markdown ledger kept in git.
+author: Janusz Lenkiewicz
+branding:
+  icon: book-open
+  color: purple
+
+inputs:
+  results:
+    description: Results file from the assertion runner (promptfoo/DeepEval/JUnit/Ragas/JSON).
+    required: true
+  format:
+    description: 'Results format: auto (default), promptfoo, deepeval, junit, ragas, json.'
+    required: false
+    default: auto
+  cases:
+    description: Golden-case directory. Optional when `project` is given.
+    required: false
+    default: ''
+  project:
+    description: Project name/path with a findingledger.yaml (supplies cases and ledger).
+    required: false
+    default: ''
+  registry:
+    description: Registry file listing projects. Rarely needed in CI.
+    required: false
+    default: ''
+  ledger:
+    description: Ledger file for `record`. Optional when `project` is given.
+    required: false
+    default: ''
+  record:
+    description: Merge the run's failures into the ledger as findings (true/false).
+    required: false
+    default: 'false'
+  fail-on-alarm:
+    description: Fail the step when a regression/sanity case fails (true/false).
+    required: false
+    default: 'true'
+  report:
+    description: Path for a self-contained HTML report. Empty = do not build one.
+    required: false
+    default: ''
+  package:
+    description: >-
+      pip requirement to install. Defaults to this repository at @main because
+      the project is not on PyPI yet; pin a tag or commit for reproducible CI,
+      and switch to `finding-ledger` once it is published.
+    required: false
+    default: git+https://github.com/JanuszLenkiewicz/finding-ledger@main
+  python-version:
+    description: Python to set up. Empty = use whatever the job already has.
+    required: false
+    default: '3.12'
+
+outputs:
+  has_alarms:
+    description: '"true" when a regression/sanity case failed.'
+    value: ${{ steps.check.outputs.has_alarms }}
+  alarms:
+    description: Number of failing regression/sanity cases.
+    value: ${{ steps.check.outputs.alarms }}
+  graduation_candidates:
+    description: Number of `open` cases that now pass and are ready to graduate.
+    value: ${{ steps.check.outputs.graduation_candidates }}
+  open_items:
+    description: Open ledger items (only when `project` is given).
+    value: ${{ steps.check.outputs.open_items }}
+  critical_open:
+    description: Open CRITICAL ledger items (only when `project` is given).
+    value: ${{ steps.check.outputs.critical_open }}
+
+runs:
+  using: composite
+  steps:
+    - name: Set up Python
+      if: inputs.python-version != ''
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ inputs.python-version }}
+
+    - name: Install finding-ledger
+      shell: bash
+      run: python -m pip install --disable-pip-version-check --quiet "${{ inputs.package }}"
+
+    - name: Record findings in the ledger
+      if: inputs.record == 'true'
+      shell: bash
+      run: |
+        findingledger import \
+          --input "${{ inputs.results }}" \
+          --format "${{ inputs.format }}" \
+          ${{ inputs.ledger && format('--ledger "{0}"', inputs.ledger) || '' }} \
+          ${{ inputs.project && format('--project "{0}"', inputs.project) || '' }} \
+          ${{ inputs.registry && format('--registry "{0}"', inputs.registry) || '' }}
+
+    # Exit 1 means "a regression/sanity case failed"; exit 2+ means the gate
+    # could not run at all (bad path, unreadable results, unknown project).
+    # Conflating the two would report a typo in a path as a returning defect,
+    # so only exit 1 arms the alarm — anything higher fails the step on the spot
+    # with a message that says what actually happened.
+    - name: Check golden cases
+      id: check
+      shell: bash
+      run: |
+        rc=0
+        findingledger check \
+          --results "${{ inputs.results }}" \
+          --format "${{ inputs.format }}" \
+          ${{ inputs.cases && format('--cases "{0}"', inputs.cases) || '' }} \
+          ${{ inputs.project && format('--project "{0}"', inputs.project) || '' }} \
+          ${{ inputs.registry && format('--registry "{0}"', inputs.registry) || '' }} \
+          --github || rc=$?
+        if [ "$rc" -eq 1 ]; then
+          echo "FINDINGLEDGER_ALARM=1" >> "$GITHUB_ENV"
+        elif [ "$rc" -ne 0 ]; then
+          echo "::error title=finding-ledger could not run::findingledger check exited $rc — this is a configuration problem (results path, format or case directory), not a quality regression."
+          exit "$rc"
+        fi
+
+    - name: Build the HTML report
+      if: inputs.report != ''
+      shell: bash
+      run: |
+        findingledger report --out "${{ inputs.report }}" \
+          ${{ inputs.project && format('--projects "{0}"', inputs.project) || '' }} \
+          ${{ inputs.registry && format('--registry "{0}"', inputs.registry) || '' }}
+
+    - name: Fail on alarm
+      if: inputs.fail-on-alarm == 'true'
+      shell: bash
+      run: |
+        if [ "${FINDINGLEDGER_ALARM:-0}" = "1" ]; then
+          echo "A regression or sanity case failed — the defect is back." >&2
+          exit 1
+        fi

@@ -1,0 +1,65 @@
+# promptfoo config wired for finding-ledger.
+#
+# Two conventions make the integration exact instead of approximate:
+#
+#   vars.case_id          the golden case this test corresponds to
+#   metadata.signature    the LEDGER ITEM (the mechanism) it belongs to
+#
+# Without them everything still works — ids fall back to the description and
+# signatures are derived from the case id — but derived signatures name the
+# symptom, and a ledger whose signatures name symptoms never grows useful
+# counters.
+description: Mentor answers — golden cases
+
+prompts:
+  - file://prompts/mentor.txt
+
+providers:
+  - openai:gpt-4o-mini
+  # Judge with a different model family than the system under test, so a model
+  # cannot reward its own style. If you cannot, say so out loud in the docs.
+  - id: anthropic:messages:claude-haiku-4-5
+    label: judge
+
+defaultTest:
+  options:
+    provider: anthropic:messages:claude-haiku-4-5
+
+tests:
+  # ── sanity: a structural invariant, must always pass ────────────────────
+  - description: answer has the four required sections
+    vars:
+      case_id: SAN-01
+      question: How do I read a volume spike?
+    assert:
+      - type: contains-all
+        value: ['## Observation', '## Interpretation', '## Risk', '## Next step']
+
+  # ── regression: the defect was fixed; a FAIL means it came back ─────────
+  - description: mentor never invents a figure absent from the source
+    vars:
+      case_id: GC-07
+      question: What was the change in the index?
+    metadata:
+      signature: B1-detail-beyond-source
+      severity: critical
+    assert:
+      - type: not-contains
+        value: '%'
+      - type: llm-rubric
+        value: >-
+          The answer must not state any numeric figure that is absent from the
+          provided source. Quoting "not given in the source" is correct behaviour.
+
+  # ── open: written BEFORE the fix; allowed to fail ───────────────────────
+  # promptfoo reports this as a plain failure. `findingledger check` is what
+  # knows it is expected — that is the whole division of labour.
+  - description: mentor keeps the answer under 200 words
+    vars:
+      case_id: GC-11
+      question: Explain the whole methodology.
+    metadata:
+      signature: LEN-01-length-drift
+    assert:
+      - type: javascript
+        value: output.split(/\s+/).length <= 200

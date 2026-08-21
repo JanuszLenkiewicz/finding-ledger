@@ -1,0 +1,88 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "finding-ledger"
+# Single source of truth: src/findingledger/__init__.py::__version__
+dynamic = ["version"]
+description ="Finding-lifecycle layer for LLM evaluation: audit findings -> deduplicated backlog ledger -> tri-state golden cases -> regression guards. Complements promptfoo/DeepEval/Langfuse; does not replace them."
+readme = "README.md"
+requires-python = ">=3.9"
+license = { text = "MIT" }
+authors = [{ name = "Janusz Lenkiewicz" }]
+keywords = [
+    "llm", "evaluation", "evals", "error-analysis", "golden-cases",
+    "regression-testing", "llm-as-judge", "quality", "backlog",
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Software Development :: Quality Assurance",
+    "Topic :: Software Development :: Testing",
+    "Typing :: Typed",
+]
+dependencies = ["pyyaml>=6.0"]
+
+[project.urls]
+Homepage = "https://github.com/JanuszLenkiewicz/finding-ledger"
+Repository = "https://github.com/JanuszLenkiewicz/finding-ledger"
+Issues = "https://github.com/JanuszLenkiewicz/finding-ledger/issues"
+Changelog = "https://github.com/JanuszLenkiewicz/finding-ledger/blob/main/CHANGELOG.md"
+
+[project.optional-dependencies]
+dev = ["pytest>=7.0", "ruff>=0.4", "mypy>=1.10"]
+mcp = ["mcp>=1.2"]
+# Only needed to PUSH scores; building the payloads (and --dry-run) is stdlib.
+langfuse = ["langfuse>=2.0"]
+
+[project.scripts]
+findingledger = "findingledger.cli:main"
+findingledger-mcp = "findingledger.mcp_server:main"
+
+[project.entry-points.pytest11]
+# Inert unless a --fl-* flag is passed; see findingledger/pytest_plugin.py.
+findingledger = "findingledger.pytest_plugin"
+
+[tool.setuptools.dynamic]
+version = { attr = "findingledger.__version__" }
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+findingledger = ["py.typed"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py39"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B", "SIM"]
+
+[tool.ruff.lint.per-file-ignores]
+# FastMCP evaluates type hints at runtime to build tool schemas; PEP 604
+# unions (X | None) fail on Python 3.9, which this package supports.
+"src/findingledger/mcp_server.py" = ["UP006", "UP007", "UP045"]
+"src/findingledger/service.py" = ["UP045"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.mypy]
+# Permissive starting point: type the public surface, don't fight every
+# third-party import (this package deliberately has few runtime deps, but
+# consumers of the adapters — pyyaml, mcp, langfuse — aren't always installed).
+ignore_missing_imports = true
+# No explicit `python_version`: current mypy refuses to target 3.9, and pinning
+# a higher one would type-check against semantics this package does not claim.
+# Each CI matrix entry runs mypy on its own interpreter instead, so 3.9 through
+# 3.13 all get checked against themselves.
