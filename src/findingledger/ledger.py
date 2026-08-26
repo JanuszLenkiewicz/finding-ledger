@@ -26,6 +26,30 @@ from .models import Finding, LedgerItem
 
 ITEM_RE = re.compile(
     r"^###\s+\[(?P<sig>[^\]\s]+)\]\s+(?P<status>\S+(?:\s+\S+)*?)\s+—\s+(?P<title>.*)$")
+
+
+def _split_status_title(rest: str) -> tuple[str, str]:
+    """Split "STATUS ... — Title" at the em dash that separates status from title.
+
+    The status half often carries a parenthesised note that itself contains an em
+    dash ("FIXED 2026-08-26 (same day as the audit, commit abc — reported by X) — Title").
+    A non-greedy regex stops at the FIRST dash, which lands inside the parentheses and
+    leaves the title starting with the tail of that note plus an orphan ")".
+
+    So: take the first separator at which the status half has balanced parentheses.
+    Falls back to the first separator when nothing balances (malformed header).
+    """
+    sep = " — "
+    first: tuple[str, str] | None = None
+    idx = rest.find(sep)
+    while idx != -1:
+        left, right = rest[:idx], rest[idx + len(sep):]
+        if first is None:
+            first = (left.strip(), right.strip())
+        if left.count("(") == left.count(")"):
+            return left.strip(), right.strip()
+        idx = rest.find(sep, idx + len(sep))
+    return first if first is not None else (rest.strip(), "")
 OCC_KEYS = ("Occurrences", "Wystąpienia", "Wystapienia")
 # Read path: matches the bullet key (with optional suffix words, e.g.
 # "Wystąpienia w biuletynach") and leaves the rest of the line free-form.
@@ -106,9 +130,11 @@ class Ledger:
                 section = sec.group("name")
                 continue
             if item:
+                status, title = _split_status_title(
+                    f'{item.group("status")} — {item.group("title")}')
                 current = LedgerItem(signature=item.group("sig"),
-                                     status=item.group("status").strip(),
-                                     title=item.group("title").strip(),
+                                     status=status,
+                                     title=title,
                                      section=section)
                 start = i
         if current is not None:

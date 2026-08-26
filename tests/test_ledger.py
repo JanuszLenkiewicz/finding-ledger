@@ -284,3 +284,36 @@ def test_bump_occurrence_still_increments_n_times_and_prepends_date(tmp_path: Pa
     led.save()
     text = p.read_text(encoding="utf-8")
     assert "3× (2026-08-02, 2026-08-01, 2026-07-30)" in text
+
+def test_status_note_with_em_dash_does_not_eat_the_title(tmp_path):
+    """Regression 2026-08-26: an em dash INSIDE the status note stole the title.
+
+    Real headers in the kierunki ledger carry a parenthesised note after the status
+    ("FIXED 2026-08-26 (same day as the audit, commit abc; escalated — reported by the
+    user) — the mentor claims ..."). The non-greedy split stopped at the dash inside the
+    parentheses, so the quality portal rendered titles starting mid-note, with an orphan
+    ")" — for 10 of 137 items.
+    """
+    md = tmp_path / "ledger.md"
+    md.write_text(
+        "### [B3-false-missing-dol] FIXED 2026-08-26 (same day as the audit, commit `45560a5`; "
+        "escalated to CRITICAL and closed in one pass — reported by the user as a daily nuisance) "
+        "— the mentor claims an element is missing that the trader did describe\n"
+        "- **Class:** B3 | **Severity:** CRITICAL\n",
+        encoding="utf-8")
+    ledger = Ledger(md)
+    item = ledger.items["B3-false-missing-dol"]
+    assert item.title.startswith("the mentor claims an element is missing")
+    assert ")" not in item.title[:20]
+    assert item.status.startswith("FIXED 2026-08-26")
+
+
+def test_plain_header_still_splits_at_the_first_dash(tmp_path):
+    md = tmp_path / "ledger.md"
+    md.write_text(
+        "### [X1-simple] OPEN — a plain title without any note\n"
+        "- **Class:** X1\n",
+        encoding="utf-8")
+    item = Ledger(md).items["X1-simple"]
+    assert item.status == "OPEN"
+    assert item.title == "a plain title without any note"
